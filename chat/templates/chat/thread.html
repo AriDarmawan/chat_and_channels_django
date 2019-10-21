@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3>Thread for {% if user != object.first %}{{ object.first }}{% else %}{{ object.second }}{% endif %}</h3>
+<ul id='chat-items'>
+{% for chat in object.chatmessage_set.all %}
+
+<li>{{ chat.message }} via {{ chat.user }}</li>
+
+{% endfor %}
+</ul>
+
+<form id='form' method='POST'> {% csrf_token %}
+{{form.as_p }}
+<input type='hidden' id="myUsername" value="{{ user.username }}"/>
+
+<input type='submit' class='btn btn-primary'/>
+</form>
+
+{% endblock %}
+
+{% block script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.js"></script>
+<script>
+// websocket scripts
+console.log(window.location);
+let loc = window.location;
+const formData =  $("#form")
+const msgInput =  $("#id_message")
+const chatHolder =  $("#chat-items")
+const me =  $("#myUsername").val()
+
+let wsStart = (loc.protocol == 'https') ? "wss://" : "ws://";
+let endpoint = wsStart + loc.host + loc.pathname;
+let socket = new ReconnectingWebSocket(endpoint);
+
+socket.onmessage = (e)=>{
+    console.log("message", e);
+    let resposeData = JSON.parse(e.data)
+    chatHolder.append(`<li>${resposeData.message} via ${resposeData.username}</li>`)
+};
+socket.onopen = (e)=>{
+    console.log("open", e);
+    formData.submit( (event) => {
+        event.preventDefault();
+        let msgText = msgInput.val();
+        let finalData = {
+            "message": msgText
+        }
+        socket.send(JSON.stringify(finalData));
+    });
+};
+socket.onerror = (e)=>console.log("error", e);
+socket.onclose = (e)=>console.log("close", e);
+
+</script>
+{% endblock %}
